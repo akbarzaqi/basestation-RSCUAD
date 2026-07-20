@@ -124,11 +124,13 @@ func ClientHandler() {
 		received := CleanString(plaintext)
 		dataAfterParseLoc := ParseLoc(received)
 
+		fmt.Printf("[INFO] dataAfterParseLoc: %s\n", dataAfterParseLoc)
+
 		s := Split(received)
-		swap := Swap(s[10])
+		swap := Swap(s[14])
 
 		var container string
-		for i := 0; i < 9; i++ {
+		for i := 0; i < 14; i++ {
 			container = container + s[i]
 		}
 

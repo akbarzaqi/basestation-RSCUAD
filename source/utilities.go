@@ -26,14 +26,14 @@ func ParseLoc(data string) string {
 
 	var result string
 
-	for i := 0; i < 11; i++ {
+	for i := 0; i < 15; i++ {
 
 		if i == 8 {
 			y := width - locY
 			s[i] = strconv.Itoa(y)
 		}
 		result += s[i]
-		if i != 10 {
+		if i != 14 {
 			result += ","
 		}
 	}
