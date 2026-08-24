@@ -147,6 +147,7 @@ func ClientHandler() {
 			swap = CleanString(swap)
 
 			if container == swap {
+				fmt.Printf("[OK] Checksum match for robot ID %s\n", GetID(dataAfterParseLoc))
 
 				id := GetID(dataAfterParseLoc)
 				t := time.Now()
@@ -181,6 +182,8 @@ func ClientHandler() {
 
 				rvRobot := WhoIsExecute(id)
 				go ClientResponse(ser, remoteaddr, rvRobot)
+			} else {
+				fmt.Printf("[FAIL] Checksum mismatch! container: '%s' vs swap: '%s'\n", container, swap)
 			}
 		}
 
