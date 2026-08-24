@@ -20,20 +20,22 @@ func CleanString(data string) string {
 
 func ParseLoc(data string) string {
 	s := Split(data)
+	if len(s) < 9 {
+		return data
+	}
 	locY, _ := strconv.Atoi(s[8])
 
 	width := 900
 
 	var result string
 
-	for i := 0; i < 15; i++ {
-
+	for i := 0; i < len(s); i++ {
 		if i == 8 {
 			y := width - locY
 			s[i] = strconv.Itoa(y)
 		}
 		result += s[i]
-		if i != 14 {
+		if i != len(s)-1 {
 			result += ","
 		}
 	}

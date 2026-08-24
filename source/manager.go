@@ -35,6 +35,14 @@ type Execute struct {
 	privilege      int
 }
 
+type GlobalBall struct {
+	HasBall   bool
+	X         int
+	Y         int
+	Timestamp int64
+}
+
+var globalBall = GlobalBall{}
 var execute = Execute{}
 var staging = dataRobot{}
 var times = timeRobot{}
@@ -127,42 +135,53 @@ func ClientHandler() {
 		fmt.Printf("[INFO] dataAfterParseLoc: %s\n", dataAfterParseLoc)
 
 		s := Split(received)
-		swap := Swap(s[14])
+		if len(s) >= 2 {
+			swap := Swap(s[len(s)-1])
 
-		var container string
-		for i := 0; i < 14; i++ {
-			container = container + s[i]
-		}
-
-		container = CleanString(container)
-		swap = CleanString(swap)
-
-		if container == swap {
-
-			id := GetID(dataAfterParseLoc)
-
-			t := time.Now()
-
-			switch id[0] {
-			case '1':
-				times.timeR1 = t.Unix()
-				staging.R1 = dataAfterParseLoc
-			case '2':
-				times.timeR2 = t.Unix()
-				staging.R2 = dataAfterParseLoc
-			case '3':
-				times.timeR3 = t.Unix()
-				staging.R3 = dataAfterParseLoc
-			case '4':
-				times.timeR4 = t.Unix()
-				staging.R4 = dataAfterParseLoc
-			case '5':
-				times.timeR5 = t.Unix()
-				staging.R5 = dataAfterParseLoc
+			var container string
+			for i := 0; i < len(s)-1; i++ {
+				container = container + s[i]
 			}
 
-			rvRobot := WhoIsExecute(id)
-			go ClientResponse(ser, remoteaddr, rvRobot)
+			container = CleanString(container)
+			swap = CleanString(swap)
+
+			if container == swap {
+
+				id := GetID(dataAfterParseLoc)
+				t := time.Now()
+
+				// Global Ball Update: jika robot melihat bola (index 4 == "1")
+				if len(s) >= 11 && s[4] == "1" {
+					ballX, _ := strconv.Atoi(s[9])
+					ballY, _ := strconv.Atoi(s[10])
+					globalBall.HasBall = true
+					globalBall.X = ballX
+					globalBall.Y = ballY
+					globalBall.Timestamp = t.Unix()
+				}
+
+				switch id[0] {
+				case '1':
+					times.timeR1 = t.Unix()
+					staging.R1 = dataAfterParseLoc
+				case '2':
+					times.timeR2 = t.Unix()
+					staging.R2 = dataAfterParseLoc
+				case '3':
+					times.timeR3 = t.Unix()
+					staging.R3 = dataAfterParseLoc
+				case '4':
+					times.timeR4 = t.Unix()
+					staging.R4 = dataAfterParseLoc
+				case '5':
+					times.timeR5 = t.Unix()
+					staging.R5 = dataAfterParseLoc
+				}
+
+				rvRobot := WhoIsExecute(id)
+				go ClientResponse(ser, remoteaddr, rvRobot)
+			}
 		}
 
 	}
@@ -172,7 +191,7 @@ func ClientResponse(conn *net.UDPConn, addr *net.UDPAddr, rvRobot string) {
 
 	// refereebox
 	intRobot, _ := strconv.Atoi(rvRobot)
-	data := make([]byte, 10)
+	data := make([]byte, 12)
 	data[0] = byte(gameController.VERSION)
 	data[1] = byte(intRobot)
 	data[2] = byte(gameController.STATE)
@@ -180,6 +199,22 @@ func ClientResponse(conn *net.UDPConn, addr *net.UDPAddr, rvRobot string) {
 	data[4] = byte(gameController.SECOND_STATE)
 	data[5] = byte(gameController.SECOND_STATE_TEAM)
 	data[6] = byte(gameController.SECOND_STATE_CONDITION)
+
+	// Global Ball Broadcast
+	t := time.Now().Unix()
+	if globalBall.HasBall && (t-globalBall.Timestamp <= 3) {
+		data[7] = 1
+	} else {
+		data[7] = 0
+	}
+
+	bx := uint16(int16(globalBall.X))
+	by := uint16(int16(globalBall.Y))
+
+	data[8] = byte(bx >> 8)
+	data[9] = byte(bx & 0xFF)
+	data[10] = byte(by >> 8)
+	data[11] = byte(by & 0xFF)
 
 	_, err := conn.WriteToUDP(data, addr)
 	if err != nil {
