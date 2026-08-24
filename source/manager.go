@@ -152,9 +152,9 @@ func ClientHandler() {
 				t := time.Now()
 
 				// Global Ball Update: jika robot melihat bola (index 4 == "1")
-				if len(s) >= 11 && s[4] == "1" {
-					ballX, _ := strconv.Atoi(s[9])
-					ballY, _ := strconv.Atoi(s[10])
+				if len(s) >= 12 && s[4] == "1" {
+					ballX, _ := strconv.Atoi(s[10])
+					ballY, _ := strconv.Atoi(s[11])
 					globalBall.HasBall = true
 					globalBall.X = ballX
 					globalBall.Y = ballY
