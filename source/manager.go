@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -42,12 +43,48 @@ type GlobalBall struct {
 	Timestamp int64
 }
 
+type RobotBallInfo struct {
+	HasBall      bool
+	X            int
+	Y            int
+	Distance     float64
+	LastSeenTime int64
+}
+
 var globalBall = GlobalBall{}
+var robotBalls = make(map[string]RobotBallInfo)
+var robotBallsMutex sync.Mutex
 var execute = Execute{}
 var staging = dataRobot{}
 var times = timeRobot{}
 var gameController = GameController{}
 var timeout int64 = 5
+
+func UpdateGlobalBallSelection(now int64) {
+	robotBallsMutex.Lock()
+	defer robotBallsMutex.Unlock()
+
+	var bestRobot RobotBallInfo
+	found := false
+
+	for _, info := range robotBalls {
+		if info.HasBall && (now-info.LastSeenTime <= 3) {
+			if !found || info.Distance < bestRobot.Distance {
+				bestRobot = info
+				found = true
+			}
+		}
+	}
+
+	if found {
+		globalBall.HasBall = true
+		globalBall.X = bestRobot.X
+		globalBall.Y = bestRobot.Y
+		globalBall.Timestamp = now
+	} else {
+		globalBall.HasBall = false
+	}
+}
 
 func Init() {
 	gameController.VERSION = 2
@@ -152,15 +189,32 @@ func ClientHandler() {
 				id := GetID(dataAfterParseLoc)
 				t := time.Now()
 
-				// Global Ball Update: jika robot melihat bola (index 4 == "1")
-				if len(s) >= 12 && s[4] == "1" {
-					ballX, _ := strconv.Atoi(s[10])
-					ballY, _ := strconv.Atoi(s[11])
-					globalBall.HasBall = true
-					globalBall.X = ballX
-					globalBall.Y = ballY
-					globalBall.Timestamp = t.Unix()
+				// Global Ball Update: Simpan data bola per-robot & pilih bola dari robot berjarak terdekat
+				robotIDKey := string(id[0])
+				hasBall := (len(s) >= 5 && s[4] == "1")
+				if hasBall && len(s) >= 13 {
+					bx, _ := strconv.Atoi(s[10])
+					by, _ := strconv.Atoi(s[11])
+					dist, _ := strconv.ParseFloat(s[12], 64)
+					robotBallsMutex.Lock()
+					robotBalls[robotIDKey] = RobotBallInfo{
+						HasBall:      true,
+						X:            bx,
+						Y:            by,
+						Distance:     dist,
+						LastSeenTime: t.Unix(),
+					}
+					robotBallsMutex.Unlock()
+				} else {
+					robotBallsMutex.Lock()
+					robotBalls[robotIDKey] = RobotBallInfo{
+						HasBall:      false,
+						LastSeenTime: t.Unix(),
+					}
+					robotBallsMutex.Unlock()
 				}
+
+				UpdateGlobalBallSelection(t.Unix())
 
 				switch id[0] {
 				case '1':
