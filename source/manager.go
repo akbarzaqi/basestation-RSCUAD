@@ -377,52 +377,33 @@ func WSResponse(conn *websocket.Conn) {
 	}
 }
 
-/*
- * selection robot who is execute
- */
 func WhoIsExecute(data string) string {
-	// [0,1] => robot see the ball
-
-	if data[1] == '1' {
-
-		privilege := GetPrivilegeRobot(data)
-
-		if privilege < execute.privilege {
-			execute.robotExecute = data
-			execute.privilege = privilege
-		}
+	if len(data) < 2 {
+		return execute.robotExecute
 	}
 
 	t := time.Now()
-	// update timeout
-	if execute.robotExecute == data {
-		execute.executeTimeout = t.Unix()
-	}
 
-	// remove when timeout
 	if execute.executeTimeout+timeout < t.Unix() {
 		execute.robotExecute = "0"
 		execute.privilege = 10
 	}
 
-	return execute.robotExecute
-}
+	if execute.robotExecute != "0" && len(execute.robotExecute) >= 2 {
+		if execute.robotExecute[0] == data[0] && data[1] == '0' {
+			execute.robotExecute = "0"
+			execute.privilege = 10
+		}
+	}
 
-func GetPrivilegeRobot(data string) int {
-	if data[1] == '1' {
-		return 1
+	if execute.robotExecute == "0" && data[1] == '1' {
+		execute.robotExecute = data
+		execute.executeTimeout = t.Unix()
 	}
-	if data[1] == '2' {
-		return 2
+
+	if execute.robotExecute == data {
+		execute.executeTimeout = t.Unix()
 	}
-	if data[1] == '3' {
-		return 3
-	}
-	if data[1] == '4' {
-		return 4
-	}
-	if data[1] == '5' {
-		return 5
-	}
-	return 10
+
+	return execute.robotExecute
 }
